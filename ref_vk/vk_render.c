@@ -54,15 +54,14 @@ static struct {
 
 static qboolean createPipelines( void )
 {
-	/* VkPushConstantRange push_const = { */
-	/* 	.offset = 0, */
-	/* 	.size = sizeof(AVec3f), */
-	/* 	.stageFlags = VK_SHADER_STAGE_VERTEX_BIT, */
-	/* }; */
+	VkPushConstantRange push_const = { 
+		.offset = 0, 
+		.size = sizeof(int) * 2, 
+		.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+	};
 
 	VkDescriptorSetLayout descriptor_layouts[] = {
 		vk_core.descriptor_pool.one_uniform_buffer_layout,
-		vk_core.descriptor_pool.one_texture_layout,
 		vk_core.descriptor_pool.one_texture_layout,
 	};
 
@@ -70,8 +69,8 @@ static qboolean createPipelines( void )
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 		.setLayoutCount = ARRAYSIZE(descriptor_layouts),
 		.pSetLayouts = descriptor_layouts,
-		/* .pushConstantRangeCount = 1, */
-		/* .pPushConstantRanges = &push_const, */
+		.pushConstantRangeCount = 1,
+		.pPushConstantRanges = &push_const,
 	};
 
 	// FIXME store layout separately
@@ -528,14 +527,17 @@ void VK_RenderEnd( VkCommandBuffer cmdbuf )
 	// that requires adding info about distance to camera for correct order-dependent blending
 
 	int pipeline = -1;
-	int texture = -1;
-	int lightmap = -1;
+	struct {
+		int lightmap;
+		int texture;
+	} push_const = { -1, -1 };
 	uint32_t ubo_offset = -1;
 
 	{
 		const VkDeviceSize offset = 0;
 		vkCmdBindVertexBuffers(cmdbuf, 0, 1, &g_render.buffer.buffer, &offset);
 		vkCmdBindIndexBuffer(cmdbuf, g_render.buffer.buffer, 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindDescriptorSets(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, g_render.pipeline_layout, 1, 1, &tglob.all_textures, 0, NULL);
 	}
 
 	for (int i = 0; i < g_render_state.num_draw_commands; ++i) {
@@ -547,31 +549,32 @@ void VK_RenderEnd( VkCommandBuffer cmdbuf )
 		if (ubo_offset != draw->ubo_offset)
 		{
 			ubo_offset = draw->ubo_offset;
-			vkCmdBindDescriptorSets(vk_core.cb, VK_PIPELINE_BIND_POINT_GRAPHICS, g_render.pipeline_layout, 0, 1, vk_core.descriptor_pool.ubo_sets, 1., &ubo_offset);
+			// TODO consider also passing through push_const
+			// - offset into storage buf
+			// - offset into uniform buf (memory limited)
+			// - pass directly by-value
+			// ^^ different gpus have different perf profiles, measure
+			vkCmdBindDescriptorSets(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, g_render.pipeline_layout, 0, 1, vk_core.descriptor_pool.ubo_sets, 1, &ubo_offset);
 		}
 
 		if (pipeline != draw->draw.render_mode) {
 			pipeline = draw->draw.render_mode;
-			vkCmdBindPipeline(vk_core.cb, VK_PIPELINE_BIND_POINT_GRAPHICS, g_render.pipelines[pipeline]);
+			vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, g_render.pipelines[pipeline]);
 		}
 
-		if (lightmap != draw->draw.lightmap) {
-			lightmap = draw->draw.lightmap;
-			vkCmdBindDescriptorSets(vk_core.cb, VK_PIPELINE_BIND_POINT_GRAPHICS, g_render.pipeline_layout, 2, 1, &findTexture(lightmap)->vk.descriptor, 0, NULL);
-		}
-
-		if (texture != draw->draw.texture)
+		if (push_const.lightmap != draw->draw.lightmap || push_const.texture != draw->draw.texture)
 		{
-			texture = draw->draw.texture;
-			// TODO names/enums for binding points
-			vkCmdBindDescriptorSets(vk_core.cb, VK_PIPELINE_BIND_POINT_GRAPHICS, g_render.pipeline_layout, 1, 1, &findTexture(texture)->vk.descriptor, 0, NULL);
+			push_const.lightmap = draw->draw.lightmap;
+			push_const.texture = draw->draw.texture;
+
+			vkCmdPushConstants(cmdbuf, g_render.pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push_const), &push_const);
 		}
 
 		if (draw->draw.index_buffer) {
 			const uint32_t index_offset = index_buffer->buffer_offset_in_units + draw->draw.index_offset;
-			vkCmdDrawIndexed(vk_core.cb, draw->draw.element_count, 1, index_offset, vertex_offset, 0);
+			vkCmdDrawIndexed(cmdbuf, draw->draw.element_count, 1, index_offset, vertex_offset, 0);
 		} else {
-			vkCmdDraw(vk_core.cb, draw->draw.element_count, 1, vertex_offset, 0);
+			vkCmdDraw(cmdbuf, draw->draw.element_count, 1, vertex_offset, 0);
 		}
 	}
 }

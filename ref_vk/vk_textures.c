@@ -2,6 +2,7 @@
 
 #include "vk_common.h"
 #include "vk_core.h"
+#include "vk_const.h"
 
 #include "xash3d_mathlib.h"
 #include "crtlib.h"
@@ -12,7 +13,6 @@
 #include <memory.h>
 #include <math.h>
 
-#define MAX_TEXTURES	4096
 #define TEXTURES_HASH_SIZE	(MAX_TEXTURES >> 2)
 
 static vk_texture_t vk_textures[MAX_TEXTURES];
@@ -45,6 +45,8 @@ void initTextures( void )
 	/* FIXME
 	gEngine.Cmd_AddCommand( "texturelist", R_TextureList_f, "display loaded textures list" );
 	*/
+
+	tglob.all_textures = vk_core.descriptor_pool.one_texture_sets[0];
 }
 
 void destroyTextures( void )
@@ -80,6 +82,8 @@ static vk_texture_t *Common_AllocTexture( const char *name, texFlags_t flags )
 			gEngine.Host_Error( "VK_AllocTexture: MAX_TEXTURES limit exceeds\n" );
 		vk_numTextures++;
 	}
+
+	gEngine.Con_Printf("Total textures: %d\n", vk_numTextures);
 
 	tex = &vk_textures[i];
 
@@ -454,6 +458,7 @@ static qboolean VK_UploadTexture(vk_texture_t *tex, rgbdata_t *pic)
 			XVK_CHECK(vkSetDebugUtilsObjectNameEXT(vk_core.device, &debug_name));
 		}
 
+/*
 	// TODO how should we approach this:
 	// - per-texture desc sets can be inconvenient if texture is used in different incompatible contexts
 	// - update descriptor sets in batch?
@@ -478,8 +483,37 @@ static qboolean VK_UploadTexture(vk_texture_t *tex, rgbdata_t *pic)
 	{
 		tex->vk.descriptor = VK_NULL_HANDLE;
 	}
+*/
 
 	return true;
+}
+
+void VK_TextureUpdateDescriptorSet( void )
+{
+	// TODO cache this; most of the time we don't really need to update
+	// the all_textures descriptor sets, because textures don't really
+	// change that much
+	VkDescriptorImageInfo dii[MAX_TEXTURES];
+	VkWriteDescriptorSet wds[] = { {
+		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		.dstBinding = 0,
+		.dstArrayElement = 0,
+		.descriptorCount = ARRAYSIZE(dii),
+		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		.pImageInfo = dii,
+	}};
+
+	for (int i = 0; i < MAX_TEXTURES; ++i) 
+	{
+		const vk_texture_t *tex = vk_textures + i;
+		const qboolean exists = !!tex->name[0];
+		dii[i].sampler = VK_NULL_HANDLE;
+		dii[i].imageView = exists ? tex->vk.image_view : VK_NULL_HANDLE;
+		dii[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	}
+
+	wds[0].dstSet = tglob.all_textures;
+	vkUpdateDescriptorSets(vk_core.device, ARRAYSIZE(wds), wds, 0, NULL);
 }
 
 ///////////// Render API funcs /////////////

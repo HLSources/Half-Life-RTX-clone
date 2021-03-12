@@ -17,7 +17,7 @@ typedef struct vk_texture_s
 		VkImage image;
 		VkImageView image_view;
 		device_memory_t device_memory;
-		VkDescriptorSet descriptor;
+		//VkDescriptorSet descriptor;
 	} vk;
 
 	uint hashValue;
@@ -42,6 +42,8 @@ typedef struct vk_textures_global_s
 
 	int		skytexturenum;	// this not a gl_texturenum!
 	int		skyboxbasenum;	// start with 5800
+
+	VkDescriptorSet all_textures;
 } vk_textures_global_t;
 
 // TODO rename this consistently
@@ -51,6 +53,8 @@ extern vk_textures_global_t tglob;
 void initTextures( void );
 void destroyTextures( void );
 vk_texture_t *findTexture(int index);
+
+void VK_TextureUpdateDescriptorSet( void );
 
 // Public API functions
 int		VK_FindTexture( const char *name );

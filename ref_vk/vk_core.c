@@ -473,9 +473,6 @@ static qboolean createCommandPool( void ) {
 	return true;
 }
 
-// ... FIXME actual numbers
-#define MAX_TEXTURES 4096
-
 static qboolean initDescriptorPool( void )
 {
 	VkDescriptorPoolSize dps[] = {
@@ -508,12 +505,13 @@ static qboolean initDescriptorPool( void )
 
 	{
 		// ... TODO find better place for this; this should be per-pipeline/shader
+		VkSampler *tmp_samplers = Mem_Malloc(vk_core.pool, sizeof(VkSampler) * MAX_TEXTURES);
 		VkDescriptorSetLayoutBinding bindings[] = { {
 				.binding = 0,
 				.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-				.descriptorCount = 1,
+				.descriptorCount = MAX_TEXTURES,
 				.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-				.pImmutableSamplers = &vk_core.default_sampler,
+				.pImmutableSamplers = tmp_samplers,
 		}};
 		VkDescriptorSetLayoutCreateInfo dslci = {
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -527,13 +525,18 @@ static qboolean initDescriptorPool( void )
 			.descriptorSetCount = MAX_DESC_SETS,
 			.pSetLayouts = tmp_layouts,
 		};
+		
+		for (int i = 0; i < MAX_TEXTURES; ++i)
+			tmp_samplers[i] = vk_core.default_sampler;
+
 		XVK_CHECK(vkCreateDescriptorSetLayout(vk_core.device, &dslci, NULL, &vk_core.descriptor_pool.one_texture_layout));
 		for (int i = 0; i < (int)MAX_DESC_SETS; ++i)
 				tmp_layouts[i] = vk_core.descriptor_pool.one_texture_layout;
 
-		XVK_CHECK(vkAllocateDescriptorSets(vk_core.device, &dsai, vk_core.descriptor_pool.sets));
+		XVK_CHECK(vkAllocateDescriptorSets(vk_core.device, &dsai, vk_core.descriptor_pool.one_texture_sets));
 
 		Mem_Free(tmp_layouts);
+		Mem_Free(tmp_samplers);
 	}
 
 	{

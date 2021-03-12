@@ -1,5 +1,7 @@
 #pragma once
 
+#define MAX_TEXTURES	128 //4096
+
 #define MAX_SCENE_STACK 2
 #define MAX_SCENE_ENTITIES 2048
 

@@ -3,6 +3,7 @@
 #include "vk_2d.h"
 #include "vk_scene.h"
 #include "vk_render.h"
+#include "vk_textures.h"
 
 #include "eiface.h"
 
@@ -381,6 +382,8 @@ void R_EndFrame( void )
 		vkCmdSetViewport(vk_core.cb, 0, ARRAYSIZE(viewport), viewport);
 		vkCmdSetScissor(vk_core.cb, 0, ARRAYSIZE(scissor), scissor);
 	}
+
+	VK_TextureUpdateDescriptorSet();
 
 	VK_RenderEnd( vk_core.cb );
 	vk2dEnd( vk_core.cb );

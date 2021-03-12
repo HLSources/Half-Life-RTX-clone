@@ -144,18 +144,23 @@ void vk2dEnd( VkCommandBuffer cmdbuf )
 	if (!g2d.num_pics)
 		return;
 
+	// FIXME bindless textures
+	return;
+
 	vkCmdBindVertexBuffers(cmdbuf, 0, 1, &g2d.pics_buffer.buffer, &offset);
 
 	for (int i = 0; i <= g2d.current_batch; ++i)
 	{
 		vk_texture_t *texture = findTexture(g2d.batch[i].texture);
 		const VkPipeline pipeline = g2d.pipelines[g2d.batch[i].blending_mode];
+		/*
 		if (texture->vk.descriptor)
 		{
 			vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 			vkCmdBindDescriptorSets(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, g2d.pipeline_layout, 0, 1, &texture->vk.descriptor, 0, NULL);
 			vkCmdDraw(cmdbuf, g2d.batch[i].vertex_count, 1, g2d.batch[i].vertex_offset, 0);
 		} // FIXME else what?
+		*/
 	}
 }
 
@@ -264,8 +269,10 @@ static qboolean createPipelines( void )
 
 qboolean initVk2d( void )
 {
+/*
 	if (!createPipelines())
 		return false;
+		*/
 
 	if (!createBuffer(&g2d.pics_buffer, sizeof(vertex_2d_t) * (MAX_PICS * 6),
 				VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT ))
@@ -280,8 +287,11 @@ qboolean initVk2d( void )
 void deinitVk2d( void )
 {
 	destroyBuffer(&g2d.pics_buffer);
+
+	/*
 	for (int i = 0; i < ARRAYSIZE(g2d.pipelines); ++i)
 		vkDestroyPipeline(vk_core.device, g2d.pipelines[i], NULL);
 
 	vkDestroyPipelineLayout(vk_core.device, g2d.pipeline_layout, NULL);
+	*/
 }

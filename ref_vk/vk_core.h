@@ -43,15 +43,15 @@ typedef struct physical_device_s {
 } physical_device_t;
 
 // FIXME dynamic; better estimate
-#define MAX_DESC_SETS 4096
+#define MAX_DESC_SETS 1
 
 typedef struct descriptor_pool_s
 {
 	VkDescriptorPool pool;
-	int next_free;
+	//int next_free;
 	//uint32_t *free_set;
 
-	VkDescriptorSet sets[MAX_DESC_SETS];
+	VkDescriptorSet one_texture_sets[MAX_DESC_SETS];
 	VkDescriptorSetLayout one_texture_layout;
 
 	// FIXME HOW THE F
@@ -198,6 +198,7 @@ const char *resultName(VkResult result);
 	X(vkCmdUpdateBuffer) \
 	X(vkCmdBindIndexBuffer) \
 	X(vkCmdDrawIndexed) \
+	X(vkCmdPushConstants) \
 
 #define X(f) extern PFN_##f f;
 	DEVICE_FUNCS(X)
