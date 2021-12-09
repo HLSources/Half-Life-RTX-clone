@@ -10,6 +10,7 @@
 #include "vk_studio.h"
 #include "vk_beams.h"
 #include "vk_brush.h"
+#include "r_rpart.h"
 
 #include "xash3d_types.h"
 #include "com_strings.h"
@@ -171,16 +172,6 @@ static qboolean Mod_ProcessRenderData( model_t *mod, qboolean create, const byte
 	}
 
 	return loaded;
-}
-
-// efx implementation
-static void CL_DrawParticles( double frametime, particle_t *particles, float partsize )
-{
-	PRINT_NOT_IMPLEMENTED();
-}
-static void CL_DrawTracers( double frametime, particle_t *tracers )
-{
-	PRINT_NOT_IMPLEMENTED();
 }
 
 // Xash3D Render Interface
