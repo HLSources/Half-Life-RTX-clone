@@ -376,6 +376,7 @@ void VK_RayFrameAddModel( vk_ray_model_t *model, const vk_render_model_t *render
 		kusok->tex_roughness = mat->tex_roughness;
 		kusok->tex_metalness = mat->tex_metalness;
 		kusok->tex_normalmap = mat->tex_normalmap;
+		kusok->tex_emissive_mask = mat->tex_emissive_mask;
 
 		kusok->roughness = mat->roughness;
 		kusok->metalness = mat->metalness;

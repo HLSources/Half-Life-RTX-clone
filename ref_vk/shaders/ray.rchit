@@ -158,12 +158,10 @@ void main() {
 	payload.normal = normal;
 	payload.geometry_normal = geom_normal;
 
-	payload.emissive = vec3(0.);
-	if (any(greaterThan(kusok.emissive, vec3(0.)))) {
-		const vec3 emissive_color = base_color;
-		//const vec3 emissive_color = pow(base_color, vec3(2.2));
-		//const float max_color = max(max(emissive_color.r, emissive_color.g), emissive_color.b);
-		payload.emissive = normalize(kusok.emissive) * emissive_color;// * mix(vec3(1.), kusok.emissive, smoothstep(.3, .6, max_color));
+	if (kusok.tex_emissive_mask > 0 && sampleTexture(kusok.tex_emissive_mask, texture_uv, uv_lods).r > .5) {
+		payload.emissive = kusok.emissive * base_color;
+	} else {
+		payload.emissive = vec3(0.);
 	}
 
 	payload.kusok_index = kusok_index;

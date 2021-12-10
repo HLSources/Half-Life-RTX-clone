@@ -10,6 +10,7 @@ static const xvk_material_t k_default_material = {
 		.tex_metalness = 0,
 		.tex_roughness = 0,
 		.tex_normalmap = 0,
+		.tex_emissive_mask = 0,
 
 		.metalness = 0.f,
 		.roughness = 1.f,
@@ -122,6 +123,8 @@ static void loadMaterialsFromFile( const char *filename ) {
 				tex_id_dest = &current_material.tex_metalness;
 			} else if (Q_stricmp(key, "roughness_map") == 0) {
 				tex_id_dest = &current_material.tex_roughness;
+			} else if (Q_stricmp(key, "emissive_mask") == 0) {
+				tex_id_dest = &current_material.tex_emissive_mask;
 			} else if (Q_stricmp(key, "roughness") == 0) {
 				sscanf(value, "%f", &current_material.roughness);
 			} else if (Q_stricmp(key, "metalness") == 0) {

@@ -7,6 +7,7 @@ typedef struct {
 	int tex_roughness;
 	int tex_metalness;
 	int tex_normalmap;
+	int tex_emissive_mask;
 
 	vec3_t base_color;
 	float roughness;
