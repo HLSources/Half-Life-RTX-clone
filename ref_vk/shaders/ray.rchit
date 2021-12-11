@@ -158,11 +158,13 @@ void main() {
 	payload.normal = normal;
 	payload.geometry_normal = geom_normal;
 
-	if (kusok.tex_emissive_mask > 0 && sampleTexture(kusok.tex_emissive_mask, texture_uv, uv_lods).r > .5) {
-		payload.emissive = kusok.emissive * base_color;
-	} else {
-		payload.emissive = vec3(0.);
-	}
+	//payload.emissive = kusok.emissive;// * base_color;
+	payload.emissive = kusok.emissive * base_color;
+	/* if (kusok.tex_emissive_mask > 0 && sampleTexture(kusok.tex_emissive_mask, texture_uv, uv_lods).r > .5) { */
+	/* 	payload.emissive = kusok.emissive;// * base_color; */
+	/* } else { */
+	/* 	payload.emissive = vec3(0.); */
+	/* } */
 
 	payload.kusok_index = kusok_index;
 
