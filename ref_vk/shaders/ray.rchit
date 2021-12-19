@@ -97,7 +97,8 @@ void main() {
 		payload.transmissiveness = 0.;
 		payload.normal = vec3(0.);
 		payload.geometry_normal = vec3(0.);
-		payload.emissive = pow(texture(skybox, gl_WorldRayDirectionEXT).rgb, vec3(2.2)); // Why?! See #230
+		//payload.emissive = pow(texture(skybox, gl_WorldRayDirectionEXT).rgb, vec3(2.2)); // Why?! See #230
+		payload.emissive = texture(skybox, gl_WorldRayDirectionEXT).rgb;
 		payload.kusok_index = -1;
 		payload.roughness = 0.;
 		payload.metalness = 0.;
@@ -158,8 +159,9 @@ void main() {
 	payload.normal = normal;
 	payload.geometry_normal = geom_normal;
 
-	//payload.emissive = kusok.emissive;// * base_color;
-	payload.emissive = kusok.emissive * base_color;
+	//payload.emissive = (kusok.emissive / 7) * base_color;
+	payload.emissive = clamp((kusok.emissive / 7), 0.0, 1.0) * base_color;
+
 	/* if (kusok.tex_emissive_mask > 0 && sampleTexture(kusok.tex_emissive_mask, texture_uv, uv_lods).r > .5) { */
 	/* 	payload.emissive = kusok.emissive;// * base_color; */
 	/* } else { */
