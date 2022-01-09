@@ -22,15 +22,21 @@ vec4 sampleTexture(uint tex_index, vec2 uv, vec4 uv_lods) {
 void main() {
 	const Geometry geom = readHitGeometry();
 
-	payload.hit_t = vec4(geom.pos, gl_HitTEXT);
+	payload.data.pos_t = vec4(geom.pos, gl_HitTEXT);
+	payload.data.normal_geometry = geom.normal_geometry;
+	payload.data.normal_shading = geom.normal_shading;
+
+	// FIXME
+	payload.data.roughness = 1.f;
+	payload.data.metalness = 0.f;
 
 	const Kusok kusok = kusochki[geom.kusok_index];
 	const uint tex_base_color = kusok.tex_base_color;
 
 	if ((tex_base_color & KUSOK_MATERIAL_FLAG_SKYBOX) != 0) {
 		// FIXME read skybox
-		payload.base_color_a = vec4(1.,0.,1.,1.);
+		payload.data.base_color = vec4(1.,0.,1.,1.);
 	} else {
-		payload.base_color_a = sampleTexture(tex_base_color, geom.uv, geom.uv_lods) * kusok.color;
+		payload.data.base_color = sampleTexture(tex_base_color, geom.uv, geom.uv_lods) * kusok.color;
 	}
 }

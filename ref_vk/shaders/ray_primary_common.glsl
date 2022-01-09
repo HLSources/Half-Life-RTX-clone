@@ -5,8 +5,7 @@
 #undef GLSL
 
 struct RayPayloadPrimary {
-	vec4 hit_t;
-	vec4 base_color_a;
+	PrimaryRay data;
 };
 
 #define PAYLOAD_LOCATION_PRIMARY 0

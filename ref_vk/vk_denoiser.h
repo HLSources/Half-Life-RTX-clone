@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vk_core.h"
+#include "vk_rtx.h" // vk_buffer_region_t
 
 qboolean XVK_DenoiserInit( void );
 void XVK_DenoiserDestroy( void );
@@ -12,7 +13,7 @@ typedef struct {
 	uint32_t width, height;
 
 	struct {
-		VkImageView base_color_view;
+		vk_buffer_region_t primary_ray;
 		VkImageView diffuse_gi_view;
 		VkImageView specular_view;
 		VkImageView additive_view;

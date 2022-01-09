@@ -19,8 +19,7 @@ typedef struct {
 	} in;
 
 	struct {
-		VkImageView position_t;
-		VkImageView base_color_r;
+		vk_buffer_region_t primary_ray;
 	} out;
 } xvk_ray_trace_primary_t;
 

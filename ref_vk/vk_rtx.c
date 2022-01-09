@@ -92,10 +92,6 @@ enum {
 typedef struct {
 	xvk_image_t denoised;
 
-	xvk_image_t position_t;
-	xvk_image_t base_color;
-	//xvk_image_t rough_metal_trans;
-
 	xvk_image_t diffuse_gi;
 	xvk_image_t specular;
 	xvk_image_t additive;
@@ -112,6 +108,9 @@ static struct {
 
 	// Holds UniformBuffer data
 	vk_buffer_t uniform_buffer;
+
+	// Holds PrimaryRay data
+	vk_buffer_t primary_ray_buffer;
 
 	// Shader binding table buffer
 	vk_buffer_t sbt_buffer;
@@ -625,11 +624,11 @@ static void updateDescriptors( const vk_ray_frame_render_args_t *args, int frame
 	// 3. Update descriptor sets (bind dest image, tlas, projection matrix)
 	VkDescriptorImageInfo dii_all_textures[MAX_TEXTURES];
 
-	g_rtx.desc_values[RayDescBinding_Dest_ImageBaseColor].image = (VkDescriptorImageInfo){
-		.sampler = VK_NULL_HANDLE,
-		.imageView = frame_dst->base_color.view,
-		.imageLayout = VK_IMAGE_LAYOUT_GENERAL,
-	};
+	/* g_rtx.desc_values[RayDescBinding_Dest_ImageBaseColor].image = (VkDescriptorImageInfo){ */
+	/* 	.sampler = VK_NULL_HANDLE, */
+	/* 	.imageView = frame_dst->base_color_a.view, */
+	/* 	.imageLayout = VK_IMAGE_LAYOUT_GENERAL, */
+	/* }; */
 
 	g_rtx.desc_values[RayDescBinding_TLAS].accel = (VkWriteDescriptorSetAccelerationStructureKHR){
 		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
@@ -942,17 +941,22 @@ static void prepareUniformBuffer( const vk_ray_frame_render_args_t *args, int fr
 }
 
 static void performTracing( VkCommandBuffer cmdbuf, const vk_ray_frame_render_args_t* args, int frame_index, const xvk_ray_frame_images_t *current_frame, float fov_angle_y) {
+	const uint32_t primary_ray_frame_size = sizeof(struct PrimaryRay) * FRAME_WIDTH * FRAME_HEIGHT;
+	const vk_buffer_region_t primary_ray_buffer_region = {
+		.buffer = g_rtx.primary_ray_buffer.buffer,
+		.offset = frame_index * primary_ray_frame_size,
+		.size = primary_ray_frame_size,
+	};
+
 	uploadLights();
 
 	prepareTlas(cmdbuf);
 
 	prepareUniformBuffer(args, frame_index, fov_angle_y);
 
-	updateDescriptors(args, frame_index, current_frame);
+	//updateDescriptors(args, frame_index, current_frame);
 
 #define LIST_GBUFFER_IMAGES(X) \
-	X(position_t) \
-	X(base_color) \
 	X(diffuse_gi) \
 	X(specular) \
 	X(additive) \
@@ -960,15 +964,22 @@ static void performTracing( VkCommandBuffer cmdbuf, const vk_ray_frame_render_ar
 
 	// 4. Barrier for TLAS build and dest image layout transfer
 	{
-		VkBufferMemoryBarrier bmb[] = { {
+		const VkBufferMemoryBarrier buffer_barriers[] = {{
 			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
 			.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR,
 			.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
 			.buffer = g_rtx.accels_buffer.buffer,
 			.offset = 0,
 			.size = VK_WHOLE_SIZE,
-		} };
-		VkImageMemoryBarrier image_barrier[] = {
+		}, {
+			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			.srcAccessMask = VK_ACCESS_SHADER_READ_BIT,
+			.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+			.buffer = primary_ray_buffer_region.buffer,
+			.offset = primary_ray_buffer_region.offset,
+			.size = primary_ray_buffer_region.size,
+		}};
+		const VkImageMemoryBarrier image_barrier[] = {
 #define GBUFFER_WRITE_BARRIER(img) { \
 			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, \
 			.image = current_frame->img.image, \
@@ -989,7 +1000,7 @@ LIST_GBUFFER_IMAGES(GBUFFER_WRITE_BARRIER)
 		vkCmdPipelineBarrier(cmdbuf,
 			VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
 			VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
-			0, 0, NULL, ARRAYSIZE(bmb), bmb, ARRAYSIZE(image_barrier), image_barrier);
+			0, 0, NULL, ARRAYSIZE(buffer_barriers), buffer_barriers, ARRAYSIZE(image_barrier), image_barrier);
 	}
 
 	{
@@ -1021,8 +1032,7 @@ LIST_GBUFFER_IMAGES(GBUFFER_WRITE_BARRIER)
 				.all_textures = tglob.dii_all_textures,
 			},
 			.out = {
-				.position_t = current_frame->position_t.view,
-				.base_color_r = current_frame->base_color.view,
+				.primary_ray = primary_ray_buffer_region,
 			},
 		};
 		XVK_RayTracePrimary( cmdbuf, &primary_args );
@@ -1030,6 +1040,15 @@ LIST_GBUFFER_IMAGES(GBUFFER_WRITE_BARRIER)
 	//rayTrace(cmdbuf, current_frame, fov_angle_y);
 
 	{
+		const VkBufferMemoryBarrier buffer_barriers[] = {{
+			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+			.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+			.buffer = primary_ray_buffer_region.buffer,
+			.offset = primary_ray_buffer_region.offset,
+			.size = primary_ray_buffer_region.size,
+		}};
+
 		const VkImageMemoryBarrier image_barriers[] = {
 #define GBUFFER_READ_BARRIER(img) { \
 		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, \
@@ -1066,7 +1085,7 @@ LIST_GBUFFER_IMAGES(GBUFFER_READ_BARRIER)
 		vkCmdPipelineBarrier(args->cmdbuf,
 			VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
 			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-			0, 0, NULL, 0, NULL, ARRAYSIZE(image_barriers), image_barriers);
+			0, 0, NULL, ARRAYSIZE(buffer_barriers), buffer_barriers, ARRAYSIZE(image_barriers), image_barriers);
 	}
 
 	{
@@ -1075,8 +1094,7 @@ LIST_GBUFFER_IMAGES(GBUFFER_READ_BARRIER)
 			.width = FRAME_WIDTH,
 			.height = FRAME_HEIGHT,
 			.src = {
-				.position_t_view = current_frame->position_t.view,
-				.base_color_view = current_frame->base_color.view,
+				.primary_ray = primary_ray_buffer_region,
 				.diffuse_gi_view = current_frame->diffuse_gi.view,
 				.specular_view = current_frame->specular.view,
 				.additive_view = current_frame->additive.view,
@@ -1319,6 +1337,13 @@ qboolean VK_RayInit( void )
 		return false;
 	}
 
+	if (!createBuffer("ray primary_ray_buffer", &g_rtx.primary_ray_buffer, sizeof(struct PrimaryRay) * FRAME_WIDTH * FRAME_HEIGHT * MAX_FRAMES_IN_FLIGHT,
+		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
+	{
+		return false;
+	}
+
 	if (!createBuffer("ray sbt_buffer", &g_rtx.sbt_buffer, ShaderBindingTable_COUNT * g_rtx.sbt_record_size,
 			VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
@@ -1399,8 +1424,6 @@ qboolean VK_RayInit( void )
 
 		CREATE_GBUFFER_IMAGE(denoised, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 
-		CREATE_GBUFFER_IMAGE(position_t, VK_FORMAT_R32G32B32A32_SFLOAT, 0);
-		CREATE_GBUFFER_IMAGE(base_color, VK_FORMAT_R8G8B8A8_UNORM, 0);
 		CREATE_GBUFFER_IMAGE(diffuse_gi, VK_FORMAT_R16G16B16A16_SFLOAT, 0);
 		CREATE_GBUFFER_IMAGE(specular, VK_FORMAT_R16G16B16A16_SFLOAT, 0);
 		CREATE_GBUFFER_IMAGE(additive, VK_FORMAT_R16G16B16A16_SFLOAT, 0);
@@ -1423,8 +1446,6 @@ void VK_RayShutdown( void ) {
 
 	for (int i = 0; i < ARRAYSIZE(g_rtx.frames); ++i) {
 		XVK_ImageDestroy(&g_rtx.frames[i].denoised);
-		XVK_ImageDestroy(&g_rtx.frames[i].position_t);
-		XVK_ImageDestroy(&g_rtx.frames[i].base_color);
 		XVK_ImageDestroy(&g_rtx.frames[i].diffuse_gi);
 		XVK_ImageDestroy(&g_rtx.frames[i].specular);
 		XVK_ImageDestroy(&g_rtx.frames[i].additive);
@@ -1451,5 +1472,6 @@ void VK_RayShutdown( void ) {
 	destroyBuffer(&g_ray_model_state.lights_buffer);
 	destroyBuffer(&g_rtx.light_grid_buffer);
 	destroyBuffer(&g_rtx.sbt_buffer);
+	destroyBuffer(&g_rtx.primary_ray_buffer);
 	destroyBuffer(&g_rtx.uniform_buffer);
 }

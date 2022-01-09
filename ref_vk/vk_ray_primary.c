@@ -21,7 +21,7 @@ enum {
 
 enum {
 	// TODO set 1
-	RtPrim_Desc_Out_BaseColorR = 0,
+	RtPrim_Desc_Out_PrimaryRay = 0,
 
 	// TODO set 0
 	RtPrim_Desc_TLAS = 1,
@@ -30,9 +30,6 @@ enum {
 	RtPrim_Desc_Indices = 4,
 	RtPrim_Desc_Vertices = 5,
 	RtPrim_Desc_Textures = 6,
-
-	// TODO set 1
-	RtPrim_Desc_Out_PositionT = 7,
 
 	RtPrim_Desc_COUNT
 };
@@ -74,8 +71,7 @@ static void initDescriptors( void ) {
 		.stageFlags = stages, \
 	}
 
-	INIT_BINDING(RtPrim_Desc_Out_BaseColorR, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-	INIT_BINDING(RtPrim_Desc_Out_PositionT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+	INIT_BINDING(RtPrim_Desc_Out_PrimaryRay, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
 
 	INIT_BINDING(RtPrim_Desc_UBO, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
 	INIT_BINDING(RtPrim_Desc_TLAS, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
@@ -241,18 +237,6 @@ void XVK_RayTracePrimaryReloadPipeline( void ) {
 }
 
 static void updateDescriptors( const xvk_ray_trace_primary_t* args ) {
-	g_ray_primary.desc.values[RtPrim_Desc_Out_BaseColorR].image = (VkDescriptorImageInfo){
-		.sampler = VK_NULL_HANDLE,
-		.imageView = args->out.base_color_r,
-		.imageLayout = VK_IMAGE_LAYOUT_GENERAL,
-	};
-
-	g_ray_primary.desc.values[RtPrim_Desc_Out_PositionT].image = (VkDescriptorImageInfo){
-		.sampler = VK_NULL_HANDLE,
-		.imageView = args->out.position_t,
-		.imageLayout = VK_IMAGE_LAYOUT_GENERAL,
-	};
-
 	g_ray_primary.desc.values[RtPrim_Desc_TLAS].accel = (VkWriteDescriptorSetAccelerationStructureKHR){
 		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
 		.accelerationStructureCount = 1,
@@ -261,15 +245,17 @@ static void updateDescriptors( const xvk_ray_trace_primary_t* args ) {
 
 #define DESC_SET_BUFFER(index, buffer_) \
 	g_ray_primary.desc.values[index].buffer = (VkDescriptorBufferInfo){ \
-		.buffer = args->in.buffer_.buffer, \
-		.offset = args->in.buffer_.offset, \
-		.range = args->in.buffer_.size, \
+		.buffer = args->buffer_.buffer, \
+		.offset = args->buffer_.offset, \
+		.range = args->buffer_.size, \
 	}
 
-	DESC_SET_BUFFER(RtPrim_Desc_UBO, ubo);
-	DESC_SET_BUFFER(RtPrim_Desc_Kusochki, kusochki);
-	DESC_SET_BUFFER(RtPrim_Desc_Indices, indices);
-	DESC_SET_BUFFER(RtPrim_Desc_Vertices, vertices);
+	DESC_SET_BUFFER(RtPrim_Desc_Out_PrimaryRay, out.primary_ray);
+
+	DESC_SET_BUFFER(RtPrim_Desc_UBO, in.ubo);
+	DESC_SET_BUFFER(RtPrim_Desc_Kusochki, in.kusochki);
+	DESC_SET_BUFFER(RtPrim_Desc_Indices, in.indices);
+	DESC_SET_BUFFER(RtPrim_Desc_Vertices, in.vertices);
 
 #undef DESC_SET_BUFFER
 
