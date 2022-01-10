@@ -22,13 +22,13 @@ vec4 sampleTexture(uint tex_index, vec2 uv, vec4 uv_lods) {
 void main() {
 	const Geometry geom = readHitGeometry();
 
-	payload.data.pos_t = vec4(geom.pos, gl_HitTEXT);
-	payload.data.normal_geometry = geom.normal_geometry;
-	payload.data.normal_shading = geom.normal_shading;
-
-	// FIXME
-	payload.data.roughness = 1.f;
-	payload.data.metalness = 0.f;
+	//payload.data.pos_t = vec4(geom.pos, gl_HitTEXT);
+	/* payload.data.normal_geometry = geom.normal_geometry; */
+	/* payload.data.normal_shading = geom.normal_shading; */
+  /*  */
+	/* // FIXME */
+	/* payload.data.roughness = 1.f; */
+	/* payload.data.metalness = 0.f; */
 
 	const Kusok kusok = kusochki[geom.kusok_index];
 	const uint tex_base_color = kusok.tex_base_color;

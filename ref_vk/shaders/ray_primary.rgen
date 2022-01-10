@@ -3,7 +3,7 @@
 
 #include "ray_primary_common.glsl"
 
-layout(set = 0, binding = 0) buffer Result { PrimaryRay out_primary_ray[]; };
+layout(set = 0, binding = 0) buffer writeonly restrict Result { PrimaryRay out_primary_ray[]; };
 
 layout(set = 0, binding = 1) uniform accelerationStructureEXT tlas;
 layout(set = 0, binding = 2) uniform UBO { UniformBuffer ubo; };
@@ -26,6 +26,11 @@ void main() {
 		sbt_offset, sbt_stride, SHADER_OFFSET_MISS_REGULAR,
 		origin, 0., direction, L,
 		PAYLOAD_LOCATION_PRIMARY);
+
+	const uvec2 _gl_WorkGroupSize = uvec2(16, 8);
+	const uvec2 _gl_WorkGroupID = gl_LaunchIDEXT.xy / _gl_WorkGroupSize;
+	const uvec2 _gl_LocalInvocationID = gl_LaunchIDEXT.xy % _gl_WorkGroupSize;
+	const uvec2 res = gl_LaunchSizeEXT.xy;
 
 	const uint ray_index = gl_LaunchSizeEXT.x * gl_LaunchIDEXT.y + gl_LaunchIDEXT.x;
 	out_primary_ray[ray_index] = payload.data;

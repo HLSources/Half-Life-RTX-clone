@@ -116,14 +116,14 @@ struct UniformBuffer {
 };
 
 struct PrimaryRay {
-	vec4 pos_t;
-	vec3 normal_geometry;
-	PAD(1)
-	vec3 normal_shading;
-	PAD(1)
+	//vec4 pos_t;
+	// vec3 normal_geometry;
+	// PAD(1)
+	// vec3 normal_shading;
+	// PAD(1)
 	vec4 base_color;
-	float roughness, metalness;
-	PAD(2)
+	// float roughness, metalness;
+	// PAD(2)
 };
 
 #undef PAD
